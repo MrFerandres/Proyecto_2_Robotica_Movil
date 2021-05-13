@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-    Proyecto 2: Creacion de mapas de rejilla de tamaño dinamico
-    Equipo:Fernando Andres Chavez Gavaldon
-           Marco Antonio Ramirez Perez
+    Proyecto 2: Mapas
+    Equipo:
+    -Fernando Andres Chavez Gavaldon
+    -Marco Antonio Ramirez Perez
+
     Codigo modificado de Juan-Pablo Ramirez-Paredes <jpi.ramirez@ugto.mx>
 """
 
@@ -58,6 +60,9 @@ for i in range(16):
 ret, carpos = vrep.simxGetObjectPosition(clientID, robot, -1, vrep.simx_opmode_streaming)
 ret, carrot = vrep.simxGetObjectOrientation(clientID, robot, -1, vrep.simx_opmode_streaming)
 
+# sacar ubicacion del robot
+ret, carpos = vrep.simxGetObjectPosition(clientID, robot, -1, vrep.simx_opmode_blocking)
+
 """
 Kv = 0.5
 Kh = 2.5
@@ -69,29 +74,33 @@ L = 0.2
 errp = 10
 """
 
-tam = 50
-
 if os.path.exists('map.txt'):
     print('Map found. Loading...')
     occgrid = np.loadtxt('map.txt')
     tocc = 1.0 * (occgrid > 0.5)
     occgrid[occgrid > 0.5] = 0
+
+    tam = occgrid.shape[0]
 else:
+    tam = 50
     print('Creating new map')
     occgrid = 0.5 * np.ones((tam, tam))
     tocc = np.zeros((tam, tam))
+
 t = time.time()
 
 initt = t
 niter = 0
-while time.time() - t < 20:
+while time.time() - t < 60:
+
     ret, carpos = vrep.simxGetObjectPosition(clientID, robot, -1, vrep.simx_opmode_blocking)
 
     xw = carpos[0]
     yw = carpos[1]
     xr = int(tam / 2) + m.ceil(xw / 0.1)
     yr = int(tam / 2) - m.floor(yw / 0.1)
-    if (xr >= tam) or (xr <= 0):
+
+    while ((xr >= tam) or (xr <= 0)) or ((yr >= tam) or (yr <= 0)):
         tam += 20
 
         occgrid2 = occgrid.copy()
@@ -105,21 +114,12 @@ while time.time() - t < 20:
         occgrid[10:10 + occgrid2.shape[0], 10:10 + occgrid2.shape[1]] = occgrid2.copy()
         tocc[10:10 + tocc2.shape[0], 10:10 + tocc2.shape[1]] = tocc2.copy()
 
-        # xr = tam
-    elif (yr >= tam) or (yr <= 0):
-        tam += 20
+        xr = int(tam / 2) + m.ceil(xw / 0.1)
+        yr = int(tam / 2) - m.floor(yw / 0.1)
 
-        occgrid2 = occgrid.copy()
-        tocc2 = tocc.copy()
-        del (occgrid)
-        del (tocc)
-        occgrid = 0.5 * np.ones((tam, tam))
-        tocc = np.zeros((tam, tam))
-        print(occgrid.shape[0], ", ", occgrid.shape[1], "   ", occgrid2.shape[0], ", ", occgrid2.shape[1], "\n")
-        print(tocc.shape[0], ", ", tocc.shape[1], "   ", tocc2.shape[0], ", ", tocc2.shape[1], '\n')
-        occgrid[10:10 + occgrid2.shape[0], 10:10 + occgrid2.shape[1]] = occgrid2.copy()
-        tocc[10:10 + tocc2.shape[0], 10:10 + tocc2.shape[1]] = tocc2.copy()
-        # yr = tam
+        # xr = tam
+
+    # print(yr-1,xr-1,occgrid.shape[0],occgrid.shape[1])
     occgrid[yr - 1, xr - 1] = 0
 
     ret, carrot = vrep.simxGetObjectOrientation(clientID, robot, -1, vrep.simx_opmode_blocking)
@@ -138,8 +138,10 @@ while time.time() - t < 20:
         ret, spos = vrep.simxGetObjectPosition(clientID, usensor[i], -1, vrep.simx_opmode_blocking)
         R = q2R(srot[0], srot[1], srot[2], srot[3])
         spos = np.array(spos).reshape((3, 1))
-        if i % 2 != 0:
-            continue
+
+        # if i % 2 != 0:
+        #    continue
+
         if state == True:
 
             opos = np.array(point).reshape((3, 1))
